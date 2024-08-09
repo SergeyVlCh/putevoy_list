@@ -133,6 +133,16 @@ files = [
 ]
 
 [[package]]
+name = "ooxcb"
+version = "1.2"
+description = "An object-oriented X Python Binding, based on xpyb"
+optional = false
+python-versions = "*"
+files = [
+    {file = "ooxcb-1.2.tar.gz", hash = "sha256:a0d27069af3211642294193842eecee34e9e14530f314458daf7ac4b2a8b08fe"},
+]
+
+[[package]]
 name = "openpyxl"
 version = "3.1.5"
 description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
@@ -348,6 +358,20 @@ files = [
 ]
 
 [[package]]
+name = "qt-py"
+version = "1.4.1"
+description = "Python 2 & 3 compatibility wrapper around all Qt bindings - PySide, PySide2, PyQt4 and PyQt5."
+optional = false
+python-versions = "*"
+files = [
+    {file = "Qt.py-1.4.1-py2.py3-none-any.whl", hash = "sha256:751eabac526da6836df9234797c85b3ea0517b1337a316a313cff71d4e05964c"},
+    {file = "Qt.py-1.4.1.tar.gz", hash = "sha256:c04ac2cedb5aeb710630f5443c032819aab4f6638aaa0105a9aacde66a337cf4"},
+]
+
+[package.dependencies]
+types-PySide2 = "*"
+
+[[package]]
 name = "requests"
 version = "2.31.0"
 description = "Python HTTP for Humans."
@@ -390,6 +414,17 @@ files = [
 pillow = "*"
 
 [[package]]
+name = "types-pyside2"
+version = "5.15.2.1.7"
+description = "The most accurate stubs for PySide2"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types_pyside2-5.15.2.1.7-py2.py3-none-any.whl", hash = "sha256:a7bec4cb4657179415ca7ec7c70a45f9f9938664e22f385c85fd7cd724b07d4d"},
+    {file = "types_pyside2-5.15.2.1.7.tar.gz", hash = "sha256:1d65072deb97481ad481b3414f94d02fd5da07f5e709c2d439ced14f79b2537c"},
+]
+
+[[package]]
 name = "urllib3"
 version = "1.26.15"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -408,4 +443,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10.0,<3.11"
-content-hash = "b5f95dbc6a96865e67d2414dfb54655b2c1809527de7f64c4003d95f9c5be367"
+content-hash = "ebdc263e9dfb9a7f04643c840fcc6132c6e0cdeee5c15612a721bb0c86140e83"
