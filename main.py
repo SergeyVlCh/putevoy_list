@@ -1,7 +1,6 @@
-import sys
+from tkinter import *
+from tkinter.ttk import Combobox
 import sqlite3
-import requests
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QComboBox, QPushButton, QMessageBox
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 import os
@@ -9,197 +8,154 @@ import zipfile
 from datetime import datetime
 import pytz
 
-files_to_download = []
-file_counter = 1
+def get_dispatchers():
+    conn = sqlite3.connect('putevoy_list.db')
+    cur = conn.cursor()
+    cur.execute("SELECT fio FROM dispetcher")
+    dispatchers = [row[0] for row in cur.fetchall()]
+    conn.close()
+    return dispatchers
 
-class MainWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
+def get_mehaniks():
+    conn = sqlite3.connect('putevoy_list.db')
+    cur = conn.cursor()
+    cur.execute("SELECT fio FROM mehanik")
+    mehaniks = [row[0] for row in cur.fetchall()]
+    conn.close()
+    return mehaniks
 
-    def initUI(self):
-        self.setWindowTitle('Формирование и скачивание файла')
+def get_mediks():
+    conn = sqlite3.connect('putevoy_list.db')
+    cur = conn.cursor()
+    cur.execute("SELECT fio FROM medsestra")
+    mediks = [row[0] for row in cur.fetchall()]
+    conn.close()
+    return mediks
 
-        layout = QVBoxLayout()
+def get_autos():
+    conn = sqlite3.connect('putevoy_list.db')
+    cur = conn.cursor()
+    cur.execute("SELECT marka, gosnomer FROM avto")
+    autos = cur.fetchall()
+    conn.close()
+    return autos
 
-        self.dispatcher_label = QLabel('Диспетчер')
-        self.dispatcher_combo = QComboBox()
-        self.load_dispatchers()
+def get_drivers():
+    conn = sqlite3.connect('putevoy_list.db')
+    cur = conn.cursor()
+    cur.execute("SELECT fio FROM voditel")
+    drivers = [row[0] for row in cur.fetchall()]
+    conn.close()
+    return drivers
 
-        self.mechanic_label = QLabel('Механик')
-        self.mechanic_combo = QComboBox()
-        self.load_mechanics()
+def load_selections():
+    selections = {}
+    if os.path.exists('selections.txt'):
+        with open('selections.txt', 'r') as file:
+            for line in file:
+                gosnomer, driver = line.strip().split(',')
+                selections[gosnomer] = driver
+    return selections
 
-        self.medic_label = QLabel('Медсестра')
-        self.medic_combo = QComboBox()
-        self.load_medics()
+def save_selections(selections):
+    with open('selections.txt', 'w') as file:
+        for gosnomer, driver in selections.items():
+            file.write(f"{gosnomer},{driver}\n")
 
-        self.car_label = QLabel('Автомобиль')
-        self.car_combo = QComboBox()
-        self.load_cars()
+window = Tk()
+window.title("Путевые листы")
+window.geometry('640x480')
 
-        self.driver_label = QLabel('Водитель')
-        self.driver_combo = QComboBox()
-        self.load_drivers()
+# Лейблы для диспетчера, механика и медработника
+vyb_disp = Label(window, text="Диспетчер")  
+vyb_disp.grid(column=0, row=0)
 
-        self.generate_button = QPushButton('Сформировать')
-        self.generate_button.clicked.connect(self.generate_file)
+vyb_meh = Label(window, text="Механик")  
+vyb_meh.grid(column=0, row=1)
 
-        self.download_button = QPushButton('Скачать')
-        self.download_button.clicked.connect(self.download_file)
+vyb_med = Label(window, text="Медработник")  
+vyb_med.grid(column=0, row=2)
 
-        layout.addWidget(self.dispatcher_label)
-        layout.addWidget(self.dispatcher_combo)
-        layout.addWidget(self.mechanic_label)
-        layout.addWidget(self.mechanic_combo)
-        layout.addWidget(self.medic_label)
-        layout.addWidget(self.medic_combo)
-        layout.addWidget(self.car_label)
-        layout.addWidget(self.car_combo)
-        layout.addWidget(self.driver_label)
-        layout.addWidget(self.driver_combo)
-        layout.addWidget(self.generate_button)
-        layout.addWidget(self.download_button)
+dispatchers = get_dispatchers()
+mehaniks = get_mehaniks()
+mediks = get_mediks()
 
-        self.setLayout(layout)
+# Комбо-боксы для диспетчера, механика и медработника
+combo_disp = Combobox(window)  
+combo_disp['values'] = ['Выберите диспетчера'] + dispatchers  
+combo_disp.current(0)  
+combo_disp.grid(column=1, row=0)
 
-    def load_dispatchers(self):
-        conn = sqlite3.connect('putevoy_list.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT fio FROM dispetcher")
-        dispatchers = cursor.fetchall()
-        conn.close()
+combo_meh = Combobox(window)  
+combo_meh['values'] = ['Выберите механика'] + mehaniks
+combo_meh.current(0)  
+combo_meh.grid(column=1, row=1)
 
-        for dispatcher in dispatchers:
-            self.dispatcher_combo.addItem(dispatcher[0])
+combo_med = Combobox(window)  
+combo_med['values'] = ['Выберите медработника'] + mediks
+combo_med.current(0)  
+combo_med.grid(column=1, row=2)
 
-    def load_mechanics(self):
-        conn = sqlite3.connect('putevoy_list.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT fio FROM mehanik")
-        mechanics = cursor.fetchall()
-        conn.close()
+# Создаем фрейм с прокруткой для списка авто и водителей
+frame = Frame(window)
+frame.grid(column=0, row=3, columnspan=2, pady=10, padx=10, sticky='nsew')
 
-        for mechanic in mechanics:
-            self.mechanic_combo.addItem(mechanic[0])
+# Создаем полосу прокрутки
+scrollbar = Scrollbar(frame, orient=VERTICAL)
+scrollbar.pack(side=RIGHT, fill=Y)
 
-    def load_medics(self):
-        conn = sqlite3.connect('putevoy_list.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT fio FROM medsestra")
-        medics = cursor.fetchall()
-        conn.close()
+# Создаем холст для размещения списка
+canvas = Canvas(frame, yscrollcommand=scrollbar.set)
+canvas.pack(side=LEFT, fill=BOTH, expand=True)
 
-        for medic in medics:
-            self.medic_combo.addItem(medic[0])
+scrollbar.config(command=canvas.yview)
 
-    def load_cars(self):
-        conn = sqlite3.connect('putevoy_list.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, marka, gosnomer FROM avto")
-        cars = cursor.fetchall()
-        conn.close()
+# Создаем внутренний фрейм для размещения элементов списка
+inner_frame = Frame(canvas)
+canvas.create_window((0, 0), window=inner_frame, anchor='nw')
 
-        for car in cars:
-            self.car_combo.addItem(f'{car[0]}, {car[1]}, {car[2]}')
+# Получаем список авто и водителей
+autos = get_autos()
+drivers = get_drivers()
 
-    def load_drivers(self):
-        conn = sqlite3.connect('putevoy_list.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT fio FROM voditel")
-        drivers = cursor.fetchall()
-        conn.close()
+# Загружаем сохраненные выборы водителей для каждого авто
+selections = load_selections()
 
-        for driver in drivers:
-            self.driver_combo.addItem(driver[0])
+# Переменные для хранения чекбоксов и комбо-боксов
+check_vars = {}
+combo_boxes = {}
 
-        def generate_file(self):
-            global file_counter
+# Создаем виджеты для каждого авто
+for marka, gosnomer in autos:
+    row_frame = Frame(inner_frame)
+    row_frame.pack(fill='x', pady=5)
 
-            selected_car = self.car_combo.currentText()
-            driver = self.driver_combo.currentText()
-            dispatcher = self.dispatcher_combo.currentText()
-            mechanic = self.mechanic_combo.currentText()
-            medic = self.medic_combo.currentText()
+    # Создаем чекбокс для каждого авто
+    var = BooleanVar()
+    check_vars[gosnomer] = var
+    check = Checkbutton(row_frame, text=f"{marka} ({gosnomer})", variable=var)
+    check.pack(side='left')
 
-            car_id, marka, gosnomer = selected_car.split(', ')
+    # Создаем выпадающий список для выбора водителя
+    combo_driver = Combobox(row_frame, values=drivers)
+    combo_driver.set(selections.get(gosnomer, 'Выберите водителя'))  # Устанавливаем сохраненное значение или вариант по умолчанию
+    combo_driver.pack(side='right', padx=10)
+    combo_boxes[gosnomer] = combo_driver
 
-            conn = sqlite3.connect('putevoy_list.db')
-            cursor = conn.cursor()
-            cursor.execute("SELECT nomer_vu, klass, snils FROM voditel WHERE fio = ?", (driver,))
-            driver_details = cursor.fetchone()
-            conn.close()
+# Обновляем размеры холста
+def on_frame_configure(event):
+    canvas.configure(scrollregion=canvas.bbox("all"))
 
-            wb = load_workbook('pl.xlsx')
-            sheet = wb.active
+inner_frame.bind("<Configure>", on_frame_configure)
 
-            bold_black_font = Font(bold=True, color="000000", size=12)
+# Функция для сохранения выбранных водителей
+def save_selected_drivers():
+    for gosnomer, combo in combo_boxes.items():
+        selections[gosnomer] = combo.get()
+    save_selections(selections)
 
-            moscow_tz = pytz.timezone('Europe/Moscow')
-            moscow_time = datetime.now(moscow_tz)
-            date_str = moscow_time.strftime("%d%m%y")
-            day_str = moscow_time.strftime("%d")
-            month_str = moscow_time.strftime("%m")
-            year_str = moscow_time.strftime("%y")
+# Кнопка для сохранения выбранных водителей
+save_button = Button(window, text="Сохранить выбор", command=save_selected_drivers)
+save_button.grid(column=0, row=4, columnspan=2, pady=10)
 
-            cells_to_bold = [
-                'BF5', 'BO5', 'CN5', 'DA3', 'S15', 'AA16', 'I17', 'M19', 'AS19', 
-                'M21', 'EN42', 'DQ48', 'GT16', 'EN40', 'GA48', 'GT17', 'V46', 
-                'BV39', 'X59', 'DP59', 'AP59', 'EH59', 'AU59', 'EM59', 'BS59', 'FL59'
-            ]
-
-            for cell in cells_to_bold:
-                sheet[cell].font = bold_black_font
-
-            sheet['BF5'] = day_str
-            sheet['BO5'] = month_str
-            sheet['CN5'] = year_str
-            sheet['DA3'] = date_str + str(file_counter)
-            sheet['S15'] = marka
-            sheet['AA16'] = gosnomer
-            sheet['I17'] = driver
-            sheet['M19'] = driver_details[0]  # Номер ВУ
-            sheet['AS19'] = driver_details[1]  # Класс
-            sheet['M21'] = driver_details[2]  # СНИЛС
-            sheet['EN42'] = driver
-            sheet['DQ48'] = driver
-            sheet['GT16'] = mechanic
-            sheet['EN40'] = mechanic
-            sheet['GA48'] = mechanic
-            sheet['GT17'] = dispatcher
-            sheet['V46'] = dispatcher
-            sheet['BV39'] = medic
-            sheet['X59'] = date_str + str(file_counter)
-            sheet['DP59'] = date_str + str(file_counter)
-            sheet['AP59'] = day_str
-            sheet['EH59'] = day_str
-            sheet['AU59'] = month_str
-            sheet['EM59'] = month_str
-            sheet['BS59'] = year_str
-            sheet['FL59'] = year_str
-
-            file_name = f'{moscow_time.strftime("%d-%m-%Y")}-{gosnomer}.xlsx'
-            wb.save(file_name)
-            files_to_download.append(file_name)
-
-            file_counter += 1
-
-            QMessageBox.information(self, "Файл сформирован", f"Файл {file_name} успешно сформирован.")
-
-        def download_file(self):
-            with zipfile.ZipFile('files.zip', 'w') as zipf:
-                for file in files_to_download:
-                    zipf.write(file)
-
-            QMessageBox.information(self, "Файл скачан", "Архив files.zip успешно создан.")
-
-            os.remove('files.zip')
-            for file in files_to_download:
-                os.remove(file)
-            files_to_download.clear()
-
-        if __name__ == '__main__':
-            app = QApplication(sys.argv)
-            mainWin = MainWindow()
-            mainWin.show()
-            sys.exit(app.exec_())
+window.mainloop()
